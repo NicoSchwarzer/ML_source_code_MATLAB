@@ -1,0 +1,306 @@
+%%%%%%%%%%%%%%%%%%%%%
+%% Assignment No 4 %%
+%%%%%%%%%%%%%%%%%%%%%
+
+
+cd("C:/Users/Nico/Documents/Uni/2. Sem/ML Econ/EX/EX4");
+
+
+%% Loading in data 
+
+% training 
+training_set_1 = load('titanic_train_nonstandardized.mat');
+training_set_2 = struct2cell(training_set_1);
+training_set_3 = cell2table(training_set_2);
+training_set = table2array(training_set_3);
+training_set = [ training_set{:}];
+
+
+% test 
+test_set_1 = load('titanic_test_nonstandardized.mat');
+test_set_2 = struct2cell(test_set_1);
+test_set_3 = cell2table(test_set_2);
+test_set = table2array(test_set_3);
+test_set = [ test_set{:}];
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Logistic Regression %%
+%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+%% a) 
+
+% see function logistic reg.m
+
+% checking:
+
+pars = [0.1, 0.1, 0.1, 0.1, 0.1, 0.1]';
+
+% addin  onstant here!!
+x_train = ones(size(training_set,1),6);
+x_train(:,2:6) = training_set(:,1:5);
+y_train = training_set(:,6);
+
+logistic_reg(pars,x_train, y_train);
+
+% works 
+
+
+%% b)
+
+init_val = zeros(6,1);
+
+
+[p_est,fval]=fminunc(@(pars)logistic_reg(pars,x_train,y_train),init_val);
+
+
+%% c)
+
+% addin  onstant here!!
+x_test = ones(size(test_set,1),6);
+x_test(:,2:6) = test_set(:,1:5);
+y_test = test_set(:,6);
+
+% using p_est for test :D
+% using normal sigmoid :D
+
+y_pred = exp( x_test * p_est) / 1 + exp( x_test * p_est);
+
+
+% row vectors
+y_pred_2 = y_pred';
+y_test_2 = y_test';
+
+figure;
+plotconfusion(y_test_2, y_pred_2);
+
+
+%% d)
+
+
+
+% using different metrics here:
+
+tp = 97;
+tn = 115;
+fp = 70;
+fn = 18;
+
+accuracy = tp + tn / (tp + tn + fp + fn);
+tpr = tp / (tp + fn);
+ppv = tp / (tp + fp);
+
+disp("The accuracy is " + accuracy + ", the true positive rate is " + tpr + " and the positive predictive value is " + ppv + "!");
+
+
+% could be imporoved by allowing for more flixbile feature combinations
+% like polynomials or log scales etc
+% else just linear decision boundary - see sl. 111 f. 
+
+
+
+%%%%%%%%%
+%% ANN %%
+%%%%%%%%%
+
+% 2 layer
+% 20 units -->  s(1) = 20 
+% tanh in s = 1
+% logistic in s = 2 
+
+
+%% a)
+
+% calling them X_train, Y_train, X_test, Y_test 
+
+X_train = x_train';
+Y_train = y_train';
+X_test = x_test';
+Y_test = y_test';
+
+
+
+%% b) 
+
+
+rng(1);    % seed for Xavier reproducibility :D
+
+
+% first layer
+beta_1 = zeros(20,5);
+
+for a = 1:20
+    for b = 1:5
+        beta_1(a,b) = normrnd(0, 1/5);
+    end
+end
+
+beta_1_0 = ones(20,1);
+
+
+
+% second layer
+beta_2 = zeros(1,20);
+
+for c = 1:5
+    beta_2(1,c) = normrnd(0, 1);
+end
+
+beta_2_0 = 1;
+
+
+%% c)
+
+% consider function "feed_forward"
+
+% checking:
+%[z_1, z_2, A_1, A_2] = feed_forward(beta_1, beta_2, beta_1_0, beta_2_0,X_train);
+
+
+% works :)
+
+
+%% d)
+
+% consider function "backward pass"
+
+% checking:
+%[dC_d_beta_1, dC_d_beta_1_0, dC_d_beta_2, dC_d_beta_2_0] = backward_pass(beta_1, beta_2, beta_1_0, beta_2_0, z_1, z_2, A_1, A_2, X_train, Y_train);
+
+% works nicely :)
+
+
+%% e)
+
+% Training using batch GD
+
+alpha = 0.0015;
+
+
+for i = 1:6000
+    % forward pass
+    [z_1, z_2, A_1, A_2] = feed_forward(beta_1, beta_2, beta_1_0, beta_2_0,X_train);
+    
+    % backward pass
+    [dC_d_beta_1, dC_d_beta_1_0, dC_d_beta_2, dC_d_beta_2_0] = backward_pass(beta_1, beta_2, beta_1_0, beta_2_0, z_1, z_2, A_1, A_2, X_train, Y_train);
+    
+    % updating all params
+    beta_1 = beta_1 - alpha * dC_d_beta_1;
+    beta_2 = beta_2 - alpha * dC_d_beta_2;
+    beta_1_0 = beta_1_0 - alpha * dC_d_beta_1_0;
+    beta_2_= beta_2_0 - alpha * dC_d_beta_2_0;
+    
+end
+
+
+
+%% f) + g)
+
+% on the training set - once more forward pass 
+
+
+[z_1, z_2, A_1, A_2] = feed_forward(beta_1, beta_2, beta_1_0, beta_2_0,X_train);
+
+Y_pred = A_2;
+
+
+figure;
+plotconfusion(Y_pred, Y_train);
+
+
+% works very well 
+
+
+
+%% h)
+
+
+
+% first layer
+zero_beta_1 = zeros(20,5);
+zero_beta_1_0 = ones(20,1);
+
+% second layer
+zero_beta_2 = zeros(1,20);
+zero_beta_2_0 = 1;
+
+
+for i = 1:6000
+    % forward pass
+    [z_1, z_2, A_1, A_2] = feed_forward(zero_beta_1, zero_beta_2, zero_beta_1_0, zero_beta_2_0,X_train);
+    
+    % backward pass
+    [dC_d_beta_1, dC_d_beta_1_0, dC_d_beta_2, dC_d_beta_2_0] = backward_pass(beta_1, beta_2, beta_1_0, beta_2_0, z_1, z_2, A_1, A_2, X_train, Y_train);
+    
+    % updating all params
+    zero_beta_1 = zero_beta_1 - alpha * dC_d_beta_1;
+    zero_beta_2 = zero_beta_2 - alpha * dC_d_beta_2;
+    zero_beta_1_0 = zero_beta_1_0 - alpha * dC_d_beta_1_0;
+    zero_beta_2_0= zero_beta_2_0 - alpha * dC_d_beta_2_0;
+    
+end
+
+
+
+
+% they beta_1, beta_2 stay 0 
+% makes sence since gradients depend on A and beta_2 -> consider maths for
+% gradients 
+
+
+%% i ) 
+
+
+% first layer
+i_beta_1 = zeros(20,5);
+
+for a = 1:20
+    for b = 1:5
+        i_beta_1(a,b) = normrnd(0, 1);
+    end
+end
+
+i_beta_1_0 = ones(20,1);
+
+
+
+% second layer
+i_beta_2 = zeros(1,20);
+
+for c = 1:5
+    i_beta_2(1,c) = normrnd(0, 1);
+end
+
+i_beta_2_0 = 1;
+
+
+
+%% e)
+
+% Training using batch GD
+
+alpha = 0.0015;
+
+
+for i = 1:6000
+    % forward pass
+    [z_1, z_2, A_1, A_2] = feed_forward(i_beta_1, i_beta_2, i_beta_1_0, i_beta_2_0,X_train);
+    
+    % backward pass
+    [dC_d_beta_1, dC_d_beta_1_0, dC_d_beta_2, dC_d_beta_2_0] = backward_pass(beta_1, beta_2, beta_1_0, beta_2_0, z_1, z_2, A_1, A_2, X_train, Y_train);
+    
+    % updating all params
+    i_beta_1 = i_beta_1 - alpha * dC_d_beta_1;
+    i_beta_2 = i_beta_2 - alpha * dC_d_beta_2;
+    i_beta_1_0 = i_beta_1_0 - alpha * dC_d_beta_1_0;
+    i_beta_2_0 = i_beta_2_0 - alpha * dC_d_beta_2_0;
+    
+end
+
+
+
+% extremely large gradients -> makes sense :D
+
+
