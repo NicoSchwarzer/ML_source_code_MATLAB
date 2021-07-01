@@ -1,0 +1,29 @@
+function [dC_d_beta_1, dC_d_beta_1_0, dC_d_beta_2, dC_d_beta_2_0] = backward_pass(beta_1, beta_2, beta_1_0, beta_2_0, z_1, z_2, A_1, A_2, X_train, Y_train)
+
+% dropping first column from X
+X = X_train(2:6,:);
+
+% renaming
+Y = Y_train;
+
+% n
+n = size(X,2);
+
+
+
+dC_dz2 = (A_2 - Y) * 1/n;
+
+dC_d_beta_2 = dC_dz2 * A_1';
+
+dC_d_beta_2_0 = sum(dC_dz2);
+
+dC_d_z_1 = beta_2' * dC_dz2 .* (1 -  A_1.^2);
+
+dC_d_beta_1 = dC_d_z_1 * X';
+
+dC_d_beta_1_0 = sum(dC_d_z_1,2);
+
+
+
+end
+
