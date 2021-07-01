@@ -1,0 +1,25 @@
+function[z_1, z_2, A_1, A_2] = feed_forward(beta_1, beta_2, beta_1_0, beta_2_0,X_train)
+
+% dropping first column from X
+X = X_train(2:6,:);
+
+
+z_1 = beta_1 * X + beta_1_0;
+
+A_1 = (exp(z_1) - exp(-z_1) ) ./ ( exp(z_1) + exp(-z_1) );
+
+%size(exp(z_1) - exp(-z_1) )
+%aa1 = exp(z_1) - exp(-z_1);
+%aa2 = exp(z_1) + exp(-z_1);
+
+%A = aa1 
+%size( exp(z_1) + exp(-z_1) )
+
+z_2 = beta_2 * A_1 + beta_2_0;
+
+A_2 = exp(z_2) ./ ( 1 + exp(z_2));
+
+
+end
+
+
