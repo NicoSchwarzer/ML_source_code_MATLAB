@@ -1,0 +1,232 @@
+%%%%%%%%%%%%%%%%%%%%%
+%% Assignment No 5 %%
+%%%%%%%%%%%%%%%%%%%%%
+
+
+cd("C:/Users/Nico/Documents/Uni/2. Sem/ML Econ/EX/EX5");
+
+
+%% Loading in data %%
+
+%% a)
+
+% training 
+training_set_1 = load('data_train.mat');
+training_set_2 = struct2cell(training_set_1);
+training_set_3 = cell2table(training_set_2);
+training_set = table2array(training_set_3);
+training_set = [ training_set{:}];
+
+
+% test 
+test_set_1 = load('data_test.mat');
+test_set_2 = struct2cell(test_set_1);
+test_set_3 = cell2table(test_set_2);
+test_set = table2array(test_set_3);
+test_set = [ test_set{:}];
+
+train_X = training_set(:,1:2);
+train_Y = training_set(:,3);
+
+test_X = test_set(:,1:2);
+test_Y = test_set(:,3);
+
+%% b)
+
+pointsize = 10;
+figure;
+scatter(train_X(:,1), train_X(:,2), pointsize, train_Y);
+
+
+
+%% ANN %%
+
+%% a), b)
+rng(1);
+
+hiddenLayerSize = [100,50,20,5];  % 1 really needed ? 
+
+net = patternnet(5);
+net.divideParam.trainRatio = 0.8;
+net.divideParam.valRatio = 0.2;
+net.trainFcn = 'traingdm';
+net.trainParam.epochs = 1000;
+
+
+%% c)
+
+inputs = train_X';
+targets = train_Y';
+
+[net,tr] = train(net,inputs,targets);
+
+pred_test_1 = net(test_X');
+
+
+pred_test = zeros(size(test_X,1),1);
+
+for i = 1:size(test_X,1)
+    if pred_test_1(1,i) >= 0.5
+        pred_test(i,1) = 1;
+    end
+end
+
+
+a = abs(sum( abs(pred_test) - abs(test_Y) ));
+miss_class_error = 1/size(test_X,1) * a;
+
+disp("The misclassification error is: " + miss_class_error)
+
+
+
+%% e)
+
+figure;
+plotconfusion(test_Y', pred_test');
+
+
+
+
+
+%% Trees %%
+
+%% a)
+tree_a = fitctree(inputs', targets');
+
+
+
+%% b)
+
+tree_b = fitctree(inputs', targets','OptimizeHyperparameters','auto', 'HyperparameterOptimizationOptions', struct('Kfold',5,'Optimizer','randomsearch')  );
+
+
+%% c)
+
+predict_a = predict(tree_a, test_X);
+predict_b = predict(tree_b, test_X);
+
+a = abs(sum( abs(predict_a) - abs(test_Y) ));
+mce_a = 1/size(test_X,1) * a;
+
+b = abs(sum( abs(predict_b) - abs(test_Y) ));
+mce_b = 1/size(test_X,1) * b;
+
+disp("The misclassification error for tree a is: " + mce_a + ", for tree_b it's: " + mce_b);
+
+
+% for tree a
+figure;
+plotconfusion(test_Y', predict_a');
+
+% for tree b
+figure;
+plotconfusion(test_Y', predict_b');
+
+
+%% d), e)
+
+
+stump = templateTree('Surrogate','on','MaxNumSplits',1);
+
+adaboost = fitcensemble(inputs', targets', 'Learners', stump, 'Method', 'AdaBoostM1', 'Numlearningcycles', 100);
+
+pred_ada = predict(adaboost, test_X);
+
+pa = abs(sum( abs(pred_ada) - abs(test_Y) ));
+mce_ada = 1/size(test_X,1) * pa;
+
+disp("The misclassification error for adaboost is: " + mce_ada);
+
+figure;
+plotconfusion(test_Y', pred_ada');
+
+
+%% f)
+
+stump_2 = templateTree('Surrogate','on','MinLeafSize',1,'NumVariablesToSample','all');
+
+bagging = fitcensemble(inputs', targets', 'Learners', stump_2, 'Method', 'bag', 'Numlearningcycles', 100);
+
+pred_ba = predict(bagging, test_X);
+
+p_ba = abs(sum( abs(pred_ba) - abs(test_Y) ));
+mce_ba = 1/size(test_X,1) * p_ba;
+
+disp("The misclassification error for bagging is: " + mce_ba);
+
+figure;
+plotconfusion(test_Y', pred_ba');
+
+
+%% g)
+
+stump_3 = templateTree('Surrogate','on','MinLeafSize',1,'NumVariablesToSample',1);
+
+rf = fitcensemble(inputs', targets', 'Learners', stump_3, 'Method', 'bag', 'Numlearningcycles', 100);
+
+pred_rf = predict(rf, test_X);
+
+p_rf = abs(sum( abs(pred_rf) - abs(test_Y) ));
+mce_rf = 1/size(test_X,1) * p_rf;
+
+disp("The misclassification error for random forest: " + mce_rf);
+
+figure;
+plotconfusion(test_Y', pred_rf');
+
+
+% the lowest of all tree methods!!
+
+
+
+
+
+%% SVM %%
+
+targets_2 = ones(size(targets,2),1);
+
+for i = 1:size(targets,2)
+    if targets(1,i) < 1
+        targets_2(i,1) = -1;
+    end
+end
+
+
+
+
+svm_1 = fitcsvm(inputs', targets_2, 'KernelFunction' , 'RBF' ,'OptimizeHyperparameters','auto','HyperparameterOptimizationOptions', struct('Kfold',5,'Optimizer','randomsearch'));
+
+% bf does not exist!, use RBF
+
+pred_svm = predict(svm_1, test_X);
+
+
+figure;
+plotconfusion(test_Y', pred_svm');
+
+
+%% b)
+
+min_1 = min(train_X(:,1));
+min_2 = min(train_X(:,2));
+
+max_1 = max(train_X(:,1));
+max_2 = max(train_X(:,2));
+
+range_1 = linspace(min_1,max_1,200);
+range_2 = linspace(min_2,max_2,200);
+
+[grid1, grid2] = meshgrid(range_1, range_2);
+
+feat_grid=[grid1(:),grid2(:)];
+
+[~ ,scores] = predict(svm_1,feat_grid);
+
+
+pointsize = 10;
+figure;
+scatter(train_X(:,1), train_X(:,2), pointsize, train_Y);
+hold on
+contour(grid1,grid2,reshape(scores(:,2),size(grid1)),[0,0],'k');
+hold off
+
